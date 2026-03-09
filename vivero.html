@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Mi Vivero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+    }
+  }
+}
+</script>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #111111;
+    --card-inner: #0f0f0f;
+    --text: #f1f1f1;
+    --text-muted: #6b7280;
+    --border: rgba(168,85,247,0.12);
+    --nav-bg: #0f0f0f;
+    --header-bg: linear-gradient(135deg, #0f0f0f 0%, #1a0533 100%);
+    --item-bg: #0f0f0f;
+    --shadow: rgba(0,0,0,0.4);
+  }
+  [data-theme="light"] {
+    --bg: #f3f4f6;
+    --card: #ffffff;
+    --card-inner: #f9fafb;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --border: rgba(168,85,247,0.2);
+    --nav-bg: #ffffff;
+    --header-bg: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%);
+    --item-bg: #f9fafb;
+    --shadow: rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    font-size: 16px;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    margin: 0; padding: 0;
+    min-height: 100vh;
+    overscroll-behavior: none;
+    color: var(--text);
+  }
+  body { padding-bottom: 80px; }
+  input, select, textarea {
+    font-size: 16px !important;
+    border-radius: 8px;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .seccion { display: none; }
+  .seccion.activa { display: block; }
+
+  .tarjeta {
+    background: var(--card);
+    border-radius: 12px;
+    box-shadow: 0 0 0 1px rgba(168,85,247,0.18), 0 2px 16px var(--shadow);
+    padding: 18px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .tarjeta::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(168,85,247,0.35), rgba(6,182,212,0.2));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .btn {
+    min-height: 46px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    border: none;
+    width: 100%;
+    padding: 12px 18px;
+    letter-spacing: 0.02em;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-verde { background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; box-shadow: 0 0 16px rgba(168,85,247,0.35); }
+  .btn-verde:hover { box-shadow: 0 0 24px rgba(168,85,247,0.55); }
+  .btn-rojo { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; box-shadow: 0 0 14px rgba(220,38,38,0.3); }
+  .btn-naranja { background: linear-gradient(135deg, #d946ef, #a855f7); color: white; box-shadow: 0 0 16px rgba(217,70,239,0.35); }
+  .btn-cyan { background: linear-gradient(135deg, #06b6d4, #0284c7); color: white; box-shadow: 0 0 16px rgba(6,182,212,0.3); }
+  .btn-gris { background: var(--card-inner); color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-gris:hover { color: var(--text); }
+
+  .nav-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--nav-bg);
+    border-top: 1px solid rgba(168,85,247,0.2);
+    display: flex;
+    z-index: 100;
+    box-shadow: 0 -4px 24px rgba(168,85,247,0.08);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px 8px;
+    cursor: pointer;
+    transition: color 0.2s;
+    border: none;
+    background: none;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+    gap: 3px;
+  }
+  .nav-btn.activo { color: #a855f7; font-weight: 700; text-shadow: 0 0 8px rgba(168,85,247,0.6); }
+
+  .fade-in { animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .exito-msg { animation: exitoAnim 0.35s ease; }
+  @keyframes exitoAnim { 0% { transform: scale(0.92); opacity: 0; } 60% { transform: scale(1.02); } 100% { transform: scale(1); opacity: 1; } }
+
+  .campo {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1.5px solid rgba(168,85,247,0.25);
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--item-bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .campo:focus { border-color: #a855f7; box-shadow: 0 0 0 3px rgba(168,85,247,0.15); }
+  .campo::placeholder { color: var(--text-muted); }
+
+  .etiqueta {
+    display: block;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  .item-lista {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--item-bg);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    border: 1px solid var(--border);
+  }
+  .stat-card { text-align: center; padding: 18px 14px; }
+  .stat-card .numero {
+    font-size: 26px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a855f7, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.03em;
+  }
+  .stat-card .label { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; }
+
+  .alerta { padding: 11px 14px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; }
+  .alerta-rojo { background: rgba(220,38,38,0.12); color: #f87171; border: 1px solid rgba(220,38,38,0.3); }
+  .alerta-verde { background: rgba(168,85,247,0.12); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23a855f7' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 38px;
+  }
+  select option { background: var(--card); color: var(--text); }
+
+  .section-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 14px; letter-spacing: -0.01em; }
+  .section-subtitle { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.07em; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  header { background: var(--header-bg); border-bottom: 1px solid rgba(168,85,247,0.2); box-shadow: 0 2px 20px rgba(168,85,247,0.1); }
+
+  .btn-action { width: 34px; height: 34px; border-radius: 7px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+  .btn-action:active { transform: scale(0.95); }
+  .btn-action-edit { background: rgba(168,85,247,0.12); color: #a855f7; border: 1px solid rgba(168,85,247,0.2); }
+  .btn-action-edit:hover { background: rgba(168,85,247,0.22); }
+  .btn-action-del { background: rgba(220,38,38,0.1); color: #f87171; border: 1px solid rgba(220,38,38,0.2); }
+  .btn-action-del:hover { background: rgba(220,38,38,0.2); }
+
+  .neon-text { background: linear-gradient(135deg, #a855f7, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* Stock badges */
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; }
+  .badge-ok    { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+  .badge-bajo  { background: rgba(234,179,8,0.15);  color: #fbbf24; border: 1px solid rgba(234,179,8,0.3); }
+  .badge-crit  { background: rgba(220,38,38,0.12);  color: #f87171; border: 1px solid rgba(220,38,38,0.25); }
+  .badge-sin   { background: rgba(107,114,128,0.15); color: #9ca3af; border: 1px solid rgba(107,114,128,0.2); }
+  .badge-cat   { background: rgba(168,85,247,0.1);  color: #c084fc; border: 1px solid rgba(168,85,247,0.2); }
+
+  /* Category filter pills */
+  .filter-pill { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1.5px solid rgba(168,85,247,0.25); background: var(--card-inner); color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+  .filter-pill:active { transform: scale(0.96); }
+  .filter-pill.activo { background: rgba(168,85,247,0.15); color: #a855f7; border-color: rgba(168,85,247,0.5); }
+  .filter-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; -ms-overflow-style: none; scrollbar-width: none; }
+  .filter-scroll::-webkit-scrollbar { display: none; }
+
+  .theme-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(168,85,247,0.25); background: rgba(168,85,247,0.08); color: #a855f7; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+
+  .resumen-text { background: var(--card-inner); border-radius: 8px; padding: 14px; font-size: 13px; color: var(--text); border: 1px solid var(--border); white-space: pre-wrap; font-family: monospace; line-height: 1.7; max-height: 46vh; overflow-y: auto; }
+
+  .stock-info { font-size: 12px; margin-top: 5px; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="px-4 py-3 sticky top-0 z-50">
+  <div class="flex items-center justify-between max-w-lg mx-auto">
+    <div style="width:34px;"></div>
+    <h1 class="font-bold tracking-wide neon-text" id="tituloPagina" style="letter-spacing:0.08em;text-transform:uppercase;font-size:13px;">Mi Vivero</h1>
+    <button class="theme-btn" onclick="toggleTema()" title="Cambiar tema">
+      <svg id="iconoSol" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg id="iconoLuna" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- NOTIFICATION -->
+<div id="mensajeExito" class="fixed top-16 left-4 right-4 z-50 hidden"></div>
+
+<!-- ============================================================ -->
+<!-- SECCIÓN 1: VENTAS                                            -->
+<!-- ============================================================ -->
+<section id="secVentas" class="seccion activa px-4 pt-4 fade-in">
+  <div class="tarjeta">
+    <h2 class="section-title">Registrar Venta</h2>
+
+    <div class="mb-4">
+      <label class="etiqueta">Producto</label>
+      <select id="ventaProducto" class="campo">
+        <option value="">Seleccionar producto</option>
+      </select>
+      <div id="stockInfo" class="stock-info" style="display:none;"></div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="etiqueta">Cantidad</label>
+        <input type="number" id="ventaCantidad" class="campo" placeholder="1" min="1" value="1">
+      </div>
+      <div>
+        <label class="etiqueta">Precio unitario</label>
+        <input type="number" id="ventaPrecio" class="campo" placeholder="0" min="0">
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <label class="etiqueta">Nota (opcional)</label>
+      <input type="text" id="ventaNota" class="campo" placeholder="Ej: cliente mayorista">
+    </div>
+
+    <div class="flex justify-between items-center mb-4 px-1">
+      <span style="font-size:11px;letter-spacing:0.07em;font-weight:600;color:var(--text-muted);text-transform:uppercase;">Total</span>
+      <span class="font-bold neon-text" style="font-size:20px;letter-spacing:-0.02em;" id="ventaSubtotal">$0</span>
+    </div>
+
+    <button class="btn btn-verde" onclick="registrarVenta()">Registrar Venta</button>
+  </div>
+
+  <div class="tarjeta stat-card">
+    <div class="label">Ventas hoy</div>
+    <div class="numero" id="totalHoy">$0</div>
+  </div>
+
+  <div class="tarjeta">
+    <h3 class="section-subtitle">Historial de hoy</h3>
+    <div id="listaVentasHoy">
+      <p style="color:var(--text-muted);" class="text-center py-5 text-sm">Sin ventas registradas hoy</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECCIÓN 2: ESTADÍSTICAS                                      -->
+<!-- ============================================================ -->
+<section id="secStats" class="seccion px-4 pt-4 fade-in">
+  <div class="tarjeta">
+    <h2 class="section-title">Estadísticas</h2>
+    <div class="flex gap-2 mb-5">
+      <button class="btn btn-verde flex-1" id="btnSemana" onclick="cambiarPeriodo('semana')">Esta semana</button>
+      <button class="btn btn-gris flex-1" id="btnMes" onclick="cambiarPeriodo('mes')">Este mes</button>
+    </div>
+    <canvas id="graficoVentas" height="180"></canvas>
+    <div class="flex gap-4 mt-3" style="font-size:12px;color:var(--text-muted);">
+      <div class="flex items-center gap-1"><span style="width:10px;height:10px;border-radius:3px;background:#a855f7;display:inline-block;"></span> Ventas</div>
+      <div class="flex items-center gap-1"><span style="width:10px;height:10px;border-radius:3px;background:#f87171;display:inline-block;"></span> Gastos</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3">
+    <div class="tarjeta stat-card">
+      <div class="label">Ventas período</div>
+      <div class="numero" id="statTotal">$0</div>
+    </div>
+    <div class="tarjeta stat-card">
+      <div class="label">N° ventas</div>
+      <div class="numero" id="statCantidad">0</div>
+    </div>
+    <div class="tarjeta stat-card">
+      <div class="label">Gastos período</div>
+      <div id="statGastos" style="font-size:24px;font-weight:800;color:#f87171;letter-spacing:-0.03em;">$0</div>
+    </div>
+    <div class="tarjeta stat-card">
+      <div class="label">Ganancia neta</div>
+      <div class="numero" id="statGanancia" style="font-size:22px;">$0</div>
+    </div>
+    <div class="tarjeta stat-card col-span-2">
+      <div class="label">Más vendido</div>
+      <div class="numero" style="font-size:20px;" id="statTopProducto">—</div>
+    </div>
+  </div>
+
+  <button class="btn btn-cyan mt-1 mb-2" onclick="abrirResumen()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+      <polyline points="16 6 12 2 8 6"></polyline>
+      <line x1="12" y1="2" x2="12" y2="15"></line>
+    </svg>
+    Exportar resumen del día
+  </button>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECCIÓN 3: GASTOS                                            -->
+<!-- ============================================================ -->
+<section id="secGastos" class="seccion px-4 pt-4 fade-in">
+  <div class="tarjeta">
+    <h2 class="section-title">Registrar Gasto</h2>
+
+    <div class="mb-4">
+      <label class="etiqueta">Descripción</label>
+      <input type="text" id="gastoDesc" class="campo" placeholder="Ej: Compra de tierra">
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="etiqueta">Monto</label>
+        <input type="number" id="gastoMonto" class="campo" placeholder="0" min="0">
+      </div>
+      <div>
+        <label class="etiqueta">Fecha</label>
+        <input type="date" id="gastoFecha" class="campo">
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <label class="etiqueta">Categoría</label>
+      <select id="gastoCat" class="campo">
+        <option value="Insumos">Insumos</option>
+        <option value="Transporte">Transporte</option>
+        <option value="Personal">Personal</option>
+        <option value="Servicios">Servicios</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+
+    <button class="btn btn-naranja" onclick="registrarGasto()">Registrar Gasto</button>
+  </div>
+
+  <div id="balanceDia" class="tarjeta stat-card">
+    <div class="label">Balance de hoy</div>
+    <div class="numero" id="balanceNumero">$0</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;font-weight:500;" id="balanceDetalle"></div>
+  </div>
+
+  <div class="tarjeta">
+    <h3 class="section-subtitle">Gastos recientes</h3>
+    <div id="listaGastos">
+      <p style="color:var(--text-muted);" class="text-center py-5 text-sm">Sin gastos registrados</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECCIÓN 4: PRODUCTOS                                         -->
+<!-- ============================================================ -->
+<section id="secProductos" class="seccion px-4 pt-4 fade-in">
+  <div class="tarjeta">
+    <h2 class="section-title">Agregar Producto</h2>
+
+    <div class="mb-4">
+      <label class="etiqueta">Nombre</label>
+      <input type="text" id="prodNombre" class="campo" placeholder="Ej: Rosa roja">
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="etiqueta">Precio base</label>
+        <input type="number" id="prodPrecio" class="campo" placeholder="0" min="0">
+      </div>
+      <div>
+        <label class="etiqueta">Stock inicial</label>
+        <input type="number" id="prodStock" class="campo" placeholder="Sin límite" min="0">
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <label class="etiqueta">Categoría</label>
+      <select id="prodCat" class="campo">
+        <option value="Flores">Flores</option>
+        <option value="Arboles">Árboles</option>
+        <option value="Cactus">Cactus/Suc.</option>
+        <option value="Insumos">Insumos</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+
+    <button class="btn btn-verde" onclick="agregarProducto()">Agregar Producto</button>
+  </div>
+
+  <div class="tarjeta">
+    <h3 class="section-subtitle">Catálogo</h3>
+
+    <div style="position:relative;" class="mb-3">
+      <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:0.4;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="buscarProducto" class="campo" placeholder="Buscar producto..." style="padding-left:34px;" oninput="renderProductos()">
+    </div>
+
+    <div class="filter-scroll">
+      <button class="filter-pill activo" data-cat="Todos" onclick="filtrarCat(this)">Todos</button>
+      <button class="filter-pill" data-cat="Flores" onclick="filtrarCat(this)">Flores</button>
+      <button class="filter-pill" data-cat="Arboles" onclick="filtrarCat(this)">Árboles</button>
+      <button class="filter-pill" data-cat="Cactus" onclick="filtrarCat(this)">Cactus/Suc.</button>
+      <button class="filter-pill" data-cat="Insumos" onclick="filtrarCat(this)">Insumos</button>
+      <button class="filter-pill" data-cat="Otro" onclick="filtrarCat(this)">Otro</button>
+    </div>
+
+    <div id="listaProductos"></div>
+  </div>
+</section>
+
+<!-- MODAL EDITAR PRODUCTO -->
+<div id="modalEditar" class="fixed inset-0 z-50 hidden flex items-end justify-center" style="background:rgba(0,0,0,0.7);">
+  <div class="w-full max-w-lg rounded-t-2xl p-6 fade-in" style="background:var(--card);border-top:1px solid rgba(168,85,247,0.3);box-shadow:0 -8px 40px rgba(168,85,247,0.15);">
+    <div class="w-8 h-1 rounded-full mx-auto mb-5" style="background:rgba(168,85,247,0.3);"></div>
+    <h3 class="section-title">Editar Producto</h3>
+    <input type="hidden" id="editarId">
+    <div class="mb-4">
+      <label class="etiqueta">Nombre</label>
+      <input type="text" id="editarNombre" class="campo">
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="etiqueta">Precio</label>
+        <input type="number" id="editarPrecio" class="campo" min="0">
+      </div>
+      <div>
+        <label class="etiqueta">Stock</label>
+        <input type="number" id="editarStock" class="campo" min="0" placeholder="Sin límite">
+      </div>
+    </div>
+    <div class="mb-5">
+      <label class="etiqueta">Categoría</label>
+      <select id="editarCat" class="campo">
+        <option value="Flores">Flores</option>
+        <option value="Arboles">Árboles</option>
+        <option value="Cactus">Cactus/Suc.</option>
+        <option value="Insumos">Insumos</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    <div class="flex gap-3">
+      <button class="btn btn-verde flex-1" onclick="guardarEdicion()">Guardar</button>
+      <button class="btn btn-gris flex-1" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR ELIMINAR -->
+<div id="modalEliminar" class="fixed inset-0 z-50 hidden flex items-center justify-center px-4" style="background:rgba(0,0,0,0.7);">
+  <div class="w-full max-w-sm rounded-xl p-6 fade-in text-center" style="background:var(--card);border:1px solid rgba(220,38,38,0.25);box-shadow:0 8px 40px rgba(220,38,38,0.15);">
+    <div class="w-11 h-11 rounded-full flex items-center justify-center mx-auto mb-4" style="background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+      </svg>
+    </div>
+    <h3 class="text-base font-bold mb-1" style="color:var(--text);" id="eliminarTitulo">Eliminar</h3>
+    <p style="color:var(--text-muted);" class="text-sm mb-5" id="eliminarMsg">Esta accion no se puede deshacer</p>
+    <div class="flex gap-3">
+      <button class="btn btn-rojo flex-1" id="btnConfirmarEliminar">Eliminar</button>
+      <button class="btn btn-gris flex-1" onclick="cerrarModalEliminar()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESUMEN DEL DIA -->
+<div id="modalResumen" class="fixed inset-0 z-50 hidden flex items-end justify-center" style="background:rgba(0,0,0,0.75);">
+  <div class="w-full max-w-lg rounded-t-2xl p-5 fade-in" style="background:var(--card);border-top:1px solid rgba(6,182,212,0.3);box-shadow:0 -8px 40px rgba(6,182,212,0.12);max-height:85vh;overflow-y:auto;">
+    <div class="w-8 h-1 rounded-full mx-auto mb-4" style="background:rgba(6,182,212,0.3);"></div>
+    <h3 class="section-title">Resumen del dia</h3>
+    <div id="textoResumen" class="resumen-text mb-4"></div>
+    <div class="flex gap-3">
+      <button class="btn btn-cyan flex-1" onclick="compartirResumen()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+        Compartir / Copiar
+      </button>
+      <button class="btn btn-gris flex-1" onclick="cerrarResumen()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAVEGACION INFERIOR -->
+<nav class="nav-bar">
+  <button class="nav-btn activo" onclick="irA('Ventas')" id="navVentas">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+    </svg>
+    Ventas
+  </button>
+  <button class="nav-btn" onclick="irA('Stats')" id="navStats">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"></line>
+      <line x1="12" y1="20" x2="12" y2="4"></line>
+      <line x1="6" y1="20" x2="6" y2="14"></line>
+    </svg>
+    Stats
+  </button>
+  <button class="nav-btn" onclick="irA('Gastos')" id="navGastos">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+      <line x1="1" y1="10" x2="23" y2="10"></line>
+    </svg>
+    Gastos
+  </button>
+  <button class="nav-btn" onclick="irA('Productos')" id="navProductos">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"></path>
+      <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
+    </svg>
+    Plantas
+  </button>
+</nav>
+
+<script>
+// ===== UTILIDADES =====
+const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const formatMoney = (n) => '$' + Number(n).toLocaleString('es-CL');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const formatFecha = (iso) => { const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; };
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const formatFechaLarga = (iso) => { const [y,m,d] = iso.split('-'); return `${parseInt(d)} de ${MESES[parseInt(m)-1]} de ${y}`; };
+
+// ===== SUPABASE =====
+const SUPABASE_URL = 'https://kojhwhtvqfewsingyopl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_b9TSVtRrT3E52BAKPcywNA_F-LFpzBc';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const TABLE_MAP = {
+  'vivero_productos': 'productos',
+  'vivero_ventas': 'ventas',
+  'vivero_gastos': 'gastos'
+};
+
+// Cache local para rendimiento (se sincroniza con Supabase)
+const cache = {
+  vivero_productos: null,
+  vivero_ventas: null,
+  vivero_gastos: null
+};
+
+async function loadFromSupabase(key) {
+  const table = TABLE_MAP[key];
+  const { data, error } = await sb.from(table).select('*');
+  if (error) { console.error('Error cargando ' + table, error); return []; }
+  cache[key] = data || [];
+  return cache[key];
+}
+
+function getData(key) {
+  return cache[key] || [];
+}
+
+async function dbInsert(key, item) {
+  const table = TABLE_MAP[key];
+  const { error } = await sb.from(table).insert(item);
+  if (error) { console.error('Error insertando en ' + table, error); mostrarError('Error guardando datos'); return false; }
+  if (!cache[key]) cache[key] = [];
+  cache[key].push(item);
+  return true;
+}
+
+async function dbUpdate(key, id, updates) {
+  const table = TABLE_MAP[key];
+  const { error } = await sb.from(table).update(updates).eq('id', id);
+  if (error) { console.error('Error actualizando ' + table, error); mostrarError('Error guardando datos'); return false; }
+  const idx = (cache[key] || []).findIndex(i => i.id === id);
+  if (idx >= 0) Object.assign(cache[key][idx], updates);
+  return true;
+}
+
+async function dbDelete(key, id) {
+  const table = TABLE_MAP[key];
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error) { console.error('Error eliminando de ' + table, error); mostrarError('Error eliminando datos'); return false; }
+  cache[key] = (cache[key] || []).filter(i => i.id !== id);
+  return true;
+}
+
+function mostrarExito(msg) {
+  const el = document.getElementById('mensajeExito');
+  el.innerHTML = `<div class="alerta alerta-verde exito-msg">${msg}</div>`;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 2500);
+}
+function mostrarError(msg) {
+  const el = document.getElementById('mensajeExito');
+  el.innerHTML = `<div class="alerta alerta-rojo exito-msg">${msg}</div>`;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+// ===== TEMA =====
+function toggleTema() {
+  const esDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', esDark ? 'light' : 'dark');
+  localStorage.setItem('vivero_tema', esDark ? 'light' : 'dark');
+  actualizarIconoTema();
+  if (chartInstance) renderStats();
+}
+function actualizarIconoTema() {
+  const esDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.getElementById('iconoSol').style.display = esDark ? 'none' : 'block';
+  document.getElementById('iconoLuna').style.display = esDark ? 'block' : 'none';
+}
+function initTema() {
+  const tema = localStorage.getItem('vivero_tema') || 'dark';
+  document.documentElement.setAttribute('data-theme', tema);
+  actualizarIconoTema();
+}
+
+// ===== NAVEGACION =====
+const titulos = { Ventas: 'Ventas', Stats: 'Estadisticas', Gastos: 'Gastos', Productos: 'Catalogo' };
+function irA(sec) {
+  document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('activo'));
+  document.getElementById('sec' + sec).classList.add('activa');
+  document.getElementById('nav' + sec).classList.add('activo');
+  document.getElementById('tituloPagina').textContent = titulos[sec] || 'Mi Vivero';
+  window.scrollTo(0, 0);
+  if (sec === 'Stats') renderStats();
+  if (sec === 'Gastos') renderGastos();
+  if (sec === 'Ventas') renderVentasHoy();
+  if (sec === 'Productos') renderProductos();
+}
+
+// ===== PRODUCTOS =====
+const CAT_LABEL = { Flores: 'Flores', Arboles: 'Arboles', Cactus: 'Cactus/Suc.', Insumos: 'Insumos', Otro: 'Otro' };
+
+const productosIniciales = [
+  { id: uid(), nombre: 'Rosa roja',             precioBase: 2500, stock: 20, cat: 'Flores'   },
+  { id: uid(), nombre: 'Cactus pequeno',         precioBase: 1800, stock: 15, cat: 'Cactus'   },
+  { id: uid(), nombre: 'Helecho',                precioBase: 3500, stock: 10, cat: 'Flores'   },
+  { id: uid(), nombre: 'Arbol frutal (bolsa)',   precioBase: 8000, stock: 5,  cat: 'Arboles'  },
+  { id: uid(), nombre: 'Tierra de hojas (saco)', precioBase: 4500, stock: 8,  cat: 'Insumos'  },
+  { id: uid(), nombre: 'Fertilizante',           precioBase: 3200, stock: 12, cat: 'Insumos'  }
+];
+
+async function initProductos() {
+  await loadFromSupabase('vivero_productos');
+  const prods = getData('vivero_productos');
+  if (prods.length === 0) {
+    for (const p of productosIniciales) {
+      await dbInsert('vivero_productos', p);
+    }
+  }
+}
+function getProductos() { return getData('vivero_productos'); }
+
+let filtroActual = 'Todos';
+function filtrarCat(btn) {
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('activo'));
+  btn.classList.add('activo');
+  filtroActual = btn.dataset.cat;
+  renderProductos();
+}
+
+function stockBadge(p) {
+  if (p.stock === undefined || p.stock === null || p.stock === '') return '<span class="badge badge-sin">Sin limite</span>';
+  const s = Number(p.stock);
+  if (s === 0) return '<span class="badge badge-crit">Sin stock</span>';
+  if (s <= 5)  return `<span class="badge badge-crit">Bajo: ${s}</span>`;
+  if (s <= 10) return `<span class="badge badge-bajo">${s} uds.</span>`;
+  return `<span class="badge badge-ok">${s} uds.</span>`;
+}
+
+function renderProductos() {
+  let prods = getProductos();
+  const q = (document.getElementById('buscarProducto').value || '').trim().toLowerCase();
+  if (filtroActual !== 'Todos') prods = prods.filter(p => p.cat === filtroActual);
+  if (q) prods = prods.filter(p => p.nombre.toLowerCase().includes(q));
+
+  const cont = document.getElementById('listaProductos');
+  if (!prods.length) {
+    cont.innerHTML = '<p style="color:var(--text-muted);" class="text-center py-5 text-sm">Sin productos encontrados</p>';
+    return;
+  }
+  cont.innerHTML = prods.map(p => `
+    <div class="item-lista">
+      <div style="flex:1;min-width:0;">
+        <div class="font-semibold" style="font-size:15px;color:var(--text);">${esc(p.nombre)}</div>
+        <div class="flex flex-wrap items-center gap-2 mt-1">
+          <span class="font-medium neon-text" style="font-size:13px;">${formatMoney(p.precioBase)}</span>
+          <span class="badge badge-cat">${esc(CAT_LABEL[p.cat] || p.cat)}</span>
+          ${stockBadge(p)}
+        </div>
+      </div>
+      <div class="flex gap-2 ml-2">
+        <button class="btn-action btn-action-edit" onclick="abrirEditar('${esc(p.id)}')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+        <button class="btn-action btn-action-del" onclick="confirmarEliminarProducto('${esc(p.id)}')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function agregarProducto() {
+  const nombre = document.getElementById('prodNombre').value.trim();
+  const precio = parseInt(document.getElementById('prodPrecio').value);
+  const stockVal = document.getElementById('prodStock').value;
+  const cat = document.getElementById('prodCat').value;
+  if (!nombre) return mostrarError('Escribe el nombre del producto');
+  if (!precio || precio <= 0) return mostrarError('Escribe un precio valido');
+  const prod = { id: uid(), nombre, precioBase: precio, cat };
+  if (stockVal !== '') prod.stock = parseInt(stockVal);
+  if (await dbInsert('vivero_productos', prod)) {
+    document.getElementById('prodNombre').value = '';
+    document.getElementById('prodPrecio').value = '';
+    document.getElementById('prodStock').value = '';
+    renderProductos();
+    actualizarSelectorProductos();
+    mostrarExito('Producto agregado');
+  }
+}
+
+function abrirEditar(id) {
+  const p = getProductos().find(p => p.id === id);
+  if (!p) return;
+  document.getElementById('editarId').value = id;
+  document.getElementById('editarNombre').value = p.nombre;
+  document.getElementById('editarPrecio').value = p.precioBase;
+  document.getElementById('editarStock').value = p.stock !== undefined ? p.stock : '';
+  document.getElementById('editarCat').value = p.cat || 'Otro';
+  document.getElementById('modalEditar').classList.remove('hidden');
+}
+function cerrarModal() { document.getElementById('modalEditar').classList.add('hidden'); }
+
+async function guardarEdicion() {
+  const id = document.getElementById('editarId').value;
+  const nombre = document.getElementById('editarNombre').value.trim();
+  const precio = parseInt(document.getElementById('editarPrecio').value);
+  const stockVal = document.getElementById('editarStock').value;
+  const cat = document.getElementById('editarCat').value;
+  if (!nombre || !precio || precio <= 0) return mostrarError('Completa los datos correctamente');
+  const updates = { nombre, precioBase: precio, cat };
+  if (stockVal !== '') updates.stock = parseInt(stockVal);
+  else updates.stock = null;
+  if (await dbUpdate('vivero_productos', id, updates)) {
+    renderProductos();
+    actualizarSelectorProductos();
+    cerrarModal();
+    mostrarExito('Producto actualizado');
+  }
+}
+
+let eliminarCb = null;
+function confirmarEliminarProducto(id) {
+  document.getElementById('eliminarTitulo').textContent = 'Eliminar producto?';
+  document.getElementById('eliminarMsg').textContent = 'El producto se quitara del catalogo';
+  document.getElementById('modalEliminar').classList.remove('hidden');
+  eliminarCb = async () => {
+    if (await dbDelete('vivero_productos', id)) {
+      renderProductos();
+      actualizarSelectorProductos();
+      cerrarModalEliminar();
+      mostrarExito('Producto eliminado');
+    }
+  };
+  document.getElementById('btnConfirmarEliminar').onclick = eliminarCb;
+}
+function cerrarModalEliminar() { document.getElementById('modalEliminar').classList.add('hidden'); }
+
+// ===== SELECTOR DE PRODUCTOS =====
+function actualizarSelectorProductos() {
+  const sel = document.getElementById('ventaProducto');
+  const val = sel.value;
+  sel.innerHTML = '<option value="">Seleccionar producto</option>' +
+    getProductos().map(p => {
+      const s = p.stock !== undefined ? ` (${p.stock} disp.)` : '';
+      return `<option value="${p.id}" data-precio="${p.precioBase}" data-stock="${p.stock !== undefined ? p.stock : ''}">${esc(p.nombre)}${s} — ${formatMoney(p.precioBase)}</option>`;
+    }).join('');
+  if (val) sel.value = val;
+}
+
+document.getElementById('ventaProducto').addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  document.getElementById('ventaPrecio').value = opt.dataset.precio || '';
+  const s = opt.dataset.stock;
+  const info = document.getElementById('stockInfo');
+  if (s !== '' && s !== undefined) {
+    const n = parseInt(s);
+    if (n === 0)     { info.style.color = '#f87171'; info.textContent = 'Sin stock disponible'; }
+    else if (n <= 5) { info.style.color = '#fbbf24'; info.textContent = `Stock bajo: ${n} unidades`; }
+    else             { info.style.color = '#4ade80'; info.textContent = `${n} unidades disponibles`; }
+    info.style.display = 'block';
+  } else {
+    info.style.display = 'none';
+  }
+  calcularSubtotal();
+});
+document.getElementById('ventaCantidad').addEventListener('input', calcularSubtotal);
+document.getElementById('ventaPrecio').addEventListener('input', calcularSubtotal);
+
+function calcularSubtotal() {
+  const cant = parseInt(document.getElementById('ventaCantidad').value) || 0;
+  const precio = parseInt(document.getElementById('ventaPrecio').value) || 0;
+  document.getElementById('ventaSubtotal').textContent = formatMoney(cant * precio);
+}
+
+// ===== VENTAS =====
+async function registrarVenta() {
+  const prodId = document.getElementById('ventaProducto').value;
+  const cantidad = parseInt(document.getElementById('ventaCantidad').value);
+  const precio = parseInt(document.getElementById('ventaPrecio').value);
+  const nota = document.getElementById('ventaNota').value.trim();
+
+  if (!prodId) return mostrarError('Selecciona un producto');
+  if (!cantidad || cantidad <= 0) return mostrarError('Escribe la cantidad');
+  if (!precio || precio <= 0) return mostrarError('Escribe el precio');
+
+  const prods = getProductos();
+  const idx = prods.findIndex(p => p.id === prodId);
+  const prod = prods[idx];
+
+  if (prod && prod.stock !== undefined && prod.stock !== null) {
+    if (prod.stock < cantidad) return mostrarError(`Stock insuficiente. Solo quedan ${prod.stock} unidades.`);
+    await dbUpdate('vivero_productos', prod.id, { stock: prod.stock - cantidad });
+  }
+
+  const venta = {
+    id: uid(), fecha: hoy(),
+    producto: prod ? prod.nombre : 'Producto',
+    cantidad, precio, total: cantidad * precio,
+    nota: nota || null
+  };
+  if (await dbInsert('vivero_ventas', venta)) {
+    document.getElementById('ventaProducto').value = '';
+    document.getElementById('ventaCantidad').value = '1';
+    document.getElementById('ventaPrecio').value = '';
+    document.getElementById('ventaNota').value = '';
+    document.getElementById('ventaSubtotal').textContent = '$0';
+    document.getElementById('stockInfo').style.display = 'none';
+    actualizarSelectorProductos();
+    renderVentasHoy();
+    mostrarExito(`Venta: ${venta.producto} x${cantidad}`);
+  }
+}
+
+function renderVentasHoy() {
+  const ventas = getData('vivero_ventas').filter(v => v.fecha === hoy());
+  const cont = document.getElementById('listaVentasHoy');
+  document.getElementById('totalHoy').textContent = formatMoney(ventas.reduce((s, v) => s + v.total, 0));
+  if (!ventas.length) {
+    cont.innerHTML = '<p style="color:var(--text-muted);" class="text-center py-5 text-sm">Sin ventas registradas hoy</p>';
+    return;
+  }
+  cont.innerHTML = ventas.slice().reverse().map(v => `
+    <div class="item-lista">
+      <div style="flex:1;min-width:0;">
+        <div class="font-semibold" style="font-size:15px;color:var(--text);">${esc(v.producto)}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">x${v.cantidad} · ${formatMoney(v.precio)} c/u${v.nota ? ' · ' + esc(v.nota) : ''}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-bold neon-text" style="font-size:15px;">${formatMoney(v.total)}</span>
+        <button class="btn-action btn-action-del" onclick="confirmarEliminarVenta('${esc(v.id)}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function confirmarEliminarVenta(id) {
+  document.getElementById('eliminarTitulo').textContent = 'Eliminar venta?';
+  document.getElementById('eliminarMsg').textContent = 'Se quitara del registro de hoy';
+  document.getElementById('modalEliminar').classList.remove('hidden');
+  document.getElementById('btnConfirmarEliminar').onclick = async () => {
+    if (await dbDelete('vivero_ventas', id)) {
+      renderVentasHoy();
+      cerrarModalEliminar();
+      mostrarExito('Venta eliminada');
+    }
+  };
+}
+
+// ===== GASTOS =====
+async function registrarGasto() {
+  const desc = document.getElementById('gastoDesc').value.trim();
+  const monto = parseInt(document.getElementById('gastoMonto').value);
+  const fecha = document.getElementById('gastoFecha').value || hoy();
+  const cat = document.getElementById('gastoCat').value;
+  if (!desc) return mostrarError('Escribe una descripcion');
+  if (!monto || monto <= 0) return mostrarError('Escribe un monto valido');
+  if (await dbInsert('vivero_gastos', { id: uid(), fecha, descripcion: desc, monto, cat })) {
+    document.getElementById('gastoDesc').value = '';
+    document.getElementById('gastoMonto').value = '';
+    document.getElementById('gastoFecha').value = hoy();
+    renderGastos();
+    mostrarExito('Gasto registrado');
+  }
+}
+
+function renderGastos() {
+  const gastos = getData('vivero_gastos');
+  const gastosHoy = gastos.filter(g => g.fecha === hoy());
+  const ventasHoy = getData('vivero_ventas').filter(v => v.fecha === hoy());
+  const totalG = gastosHoy.reduce((s, g) => s + g.monto, 0);
+  const totalV = ventasHoy.reduce((s, v) => s + v.total, 0);
+  const balance = totalV - totalG;
+
+  const numEl = document.getElementById('balanceNumero');
+  numEl.textContent = formatMoney(balance);
+  if (balance < 0) {
+    numEl.style.background = 'none';
+    numEl.style.webkitBackgroundClip = 'unset';
+    numEl.style.webkitTextFillColor = '#f87171';
+  } else {
+    numEl.style.background = 'linear-gradient(135deg, #a855f7, #06b6d4)';
+    numEl.style.webkitBackgroundClip = 'text';
+    numEl.style.webkitTextFillColor = 'transparent';
+  }
+  document.getElementById('balanceDetalle').textContent = `Ventas: ${formatMoney(totalV)}  ·  Gastos: ${formatMoney(totalG)}`;
+  document.getElementById('balanceDia').style.boxShadow = (totalG > totalV && totalG > 0)
+    ? '0 0 0 1px rgba(220,38,38,0.3), 0 2px 16px rgba(220,38,38,0.15)' : '';
+
+  const cont = document.getElementById('listaGastos');
+  const recientes = gastos.slice(-20).reverse();
+  if (!recientes.length) {
+    cont.innerHTML = '<p style="color:var(--text-muted);" class="text-center py-5 text-sm">Sin gastos registrados</p>';
+    return;
+  }
+  cont.innerHTML = recientes.map(g => `
+    <div class="item-lista">
+      <div style="flex:1;min-width:0;">
+        <div class="font-semibold" style="font-size:15px;color:var(--text);">${esc(g.descripcion)}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${formatFecha(g.fecha)}${g.cat ? ' · ' + esc(g.cat) : ''}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-bold" style="font-size:15px;color:#f87171;">-${formatMoney(g.monto)}</span>
+        <button class="btn-action btn-action-del" onclick="confirmarEliminarGasto('${esc(g.id)}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function confirmarEliminarGasto(id) {
+  document.getElementById('eliminarTitulo').textContent = 'Eliminar gasto?';
+  document.getElementById('eliminarMsg').textContent = 'Se quitara del registro';
+  document.getElementById('modalEliminar').classList.remove('hidden');
+  document.getElementById('btnConfirmarEliminar').onclick = async () => {
+    if (await dbDelete('vivero_gastos', id)) {
+      renderGastos();
+      cerrarModalEliminar();
+      mostrarExito('Gasto eliminado');
+    }
+  };
+}
+
+// ===== ESTADISTICAS =====
+let periodoActual = 'semana';
+let chartInstance = null;
+
+function cambiarPeriodo(p) {
+  periodoActual = p;
+  document.getElementById('btnSemana').className = 'btn flex-1 ' + (p === 'semana' ? 'btn-verde' : 'btn-gris');
+  document.getElementById('btnMes').className   = 'btn flex-1 ' + (p === 'mes'    ? 'btn-verde' : 'btn-gris');
+  renderStats();
+}
+
+function renderStats() {
+  const ventas = getData('vivero_ventas');
+  const gastos = getData('vivero_gastos');
+  const ahora = new Date();
+  const dias = periodoActual === 'semana' ? 7 : 30;
+  const DN = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+
+  const labels = [], dV = [], dG = [];
+  for (let i = dias - 1; i >= 0; i--) {
+    const d = new Date(ahora); d.setDate(d.getDate() - i);
+    const f = d.toISOString().split('T')[0];
+    labels.push(periodoActual === 'semana' ? DN[d.getDay()] : d.getDate() + '/' + (d.getMonth()+1));
+    dV.push(ventas.filter(v => v.fecha === f).reduce((s, v) => s + v.total, 0));
+    dG.push(gastos.filter(g => g.fecha === f).reduce((s, g) => s + g.monto, 0));
+  }
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const tc = isDark ? '#4b5563' : '#9ca3af';
+  const gc = isDark ? 'rgba(168,85,247,0.08)' : 'rgba(168,85,247,0.1)';
+  const ctx = document.getElementById('graficoVentas').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  const gV = ctx.createLinearGradient(0,0,0,200);
+  gV.addColorStop(0,'rgba(168,85,247,0.85)'); gV.addColorStop(1,'rgba(168,85,247,0.4)');
+  const gG = ctx.createLinearGradient(0,0,0,200);
+  gG.addColorStop(0,'rgba(248,113,113,0.85)'); gG.addColorStop(1,'rgba(248,113,113,0.4)');
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Ventas', data: dV, backgroundColor: gV, borderRadius: 5, borderSkipped: false },
+        { label: 'Gastos', data: dG, backgroundColor: gG, borderRadius: 5, borderSkipped: false }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: c => `${c.dataset.label}: ${formatMoney(c.raw)}` },
+          backgroundColor: isDark ? '#1a0533' : '#4c1d95',
+          titleColor: '#a855f7', bodyColor: '#f1f1f1',
+          borderColor: 'rgba(168,85,247,0.3)', borderWidth: 1, cornerRadius: 8, padding: 10
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => '$' + (v >= 1000 ? (v/1000)+'k' : v), font: { size:11, family:'Inter' }, color: tc }, grid: { color: gc } },
+        x: { ticks: { font: { size:11, family:'Inter' }, color: tc }, grid: { display: false } }
+      }
+    }
+  });
+
+  const ini = new Date(ahora); ini.setDate(ini.getDate() - dias + 1);
+  const iniStr = ini.toISOString().split('T')[0];
+  const vP = ventas.filter(v => v.fecha >= iniStr);
+  const gP = gastos.filter(g => g.fecha >= iniStr);
+  const tV = vP.reduce((s, v) => s + v.total, 0);
+  const tG = gP.reduce((s, g) => s + g.monto, 0);
+  const gan = tV - tG;
+
+  document.getElementById('statTotal').textContent    = formatMoney(tV);
+  document.getElementById('statCantidad').textContent = vP.length;
+  document.getElementById('statGastos').textContent   = formatMoney(tG);
+
+  const ganEl = document.getElementById('statGanancia');
+  ganEl.textContent = formatMoney(gan);
+  if (gan < 0) {
+    ganEl.style.background = 'none'; ganEl.style.webkitBackgroundClip = 'unset'; ganEl.style.webkitTextFillColor = '#f87171';
+  } else {
+    ganEl.style.background = 'linear-gradient(135deg,#a855f7,#06b6d4)';
+    ganEl.style.webkitBackgroundClip = 'text'; ganEl.style.webkitTextFillColor = 'transparent';
+  }
+
+  const conteo = {};
+  vP.forEach(v => { conteo[v.producto] = (conteo[v.producto] || 0) + v.cantidad; });
+  const top = Object.entries(conteo).sort((a,b) => b[1]-a[1])[0];
+  document.getElementById('statTopProducto').textContent = top ? `${top[0]} (${top[1]})` : '—';
+}
+
+// ===== RESUMEN =====
+function generarResumen() {
+  const f = hoy();
+  const ventas = getData('vivero_ventas').filter(v => v.fecha === f);
+  const gastos = getData('vivero_gastos').filter(g => g.fecha === f);
+  const tV = ventas.reduce((s,v) => s+v.total, 0);
+  const tG = gastos.reduce((s,g) => s+g.monto, 0);
+  const bal = tV - tG;
+
+  let t = `RESUMEN MI VIVERO\n${formatFechaLarga(f)}\n${'─'.repeat(28)}\n\n`;
+  t += `VENTAS (${ventas.length})\n`;
+  if (!ventas.length) t += `  Sin ventas registradas\n`;
+  else ventas.forEach(v => { t += `  ${v.producto} x${v.cantidad}  ${formatMoney(v.total)}\n`; if (v.nota) t += `    -> ${v.nota}\n`; });
+  t += `  Total: ${formatMoney(tV)}\n\n`;
+
+  t += `GASTOS (${gastos.length})\n`;
+  if (!gastos.length) t += `  Sin gastos registrados\n`;
+  else gastos.forEach(g => { t += `  ${g.descripcion}${g.cat ? ' ['+g.cat+']' : ''}  -${formatMoney(g.monto)}\n`; });
+  t += `  Total: ${formatMoney(tG)}\n\n`;
+
+  t += `${'─'.repeat(28)}\n`;
+  t += `BALANCE: ${formatMoney(bal)}${bal < 0 ? ' (negativo)' : ''}\n`;
+  return t;
+}
+
+function abrirResumen() {
+  document.getElementById('textoResumen').textContent = generarResumen();
+  document.getElementById('modalResumen').classList.remove('hidden');
+}
+function cerrarResumen() { document.getElementById('modalResumen').classList.add('hidden'); }
+
+async function compartirResumen() {
+  const texto = generarResumen();
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Resumen Vivero', text: texto }); return; } catch {}
+  }
+  if (navigator.clipboard) {
+    await navigator.clipboard.writeText(texto);
+    mostrarExito('Resumen copiado al portapapeles');
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = texto; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    mostrarExito('Resumen copiado');
+  }
+}
+
+// ===== INIT =====
+async function init() {
+  initTema();
+  await initProductos();
+  await loadFromSupabase('vivero_ventas');
+  await loadFromSupabase('vivero_gastos');
+  actualizarSelectorProductos();
+  document.getElementById('gastoFecha').value = hoy();
+  renderVentasHoy();
+}
+init();
+</script>
+</body>
+</html>

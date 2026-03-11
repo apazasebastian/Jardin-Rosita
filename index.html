@@ -244,6 +244,10 @@ tailwind.config = {
   .resumen-text { background: var(--card-inner); border-radius: 8px; padding: 14px; font-size: 13px; color: var(--text); border: 1px solid var(--border); white-space: pre-wrap; font-family: monospace; line-height: 1.7; max-height: 46vh; overflow-y: auto; }
 
   .stock-info { font-size: 12px; margin-top: 5px; font-weight: 500; }
+
+  /* Login spinner */
+  .login-spinner { width: 20px; height: 20px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -251,7 +255,13 @@ tailwind.config = {
 <!-- HEADER -->
 <header class="px-4 py-3 sticky top-0 z-50">
   <div class="flex items-center justify-between max-w-lg mx-auto">
-    <div style="width:34px;"></div>
+    <button id="btnLogout" class="theme-btn" onclick="cerrarSesion()" title="Cerrar sesion" style="display:none;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
+    </button>
     <h1 class="font-bold tracking-wide neon-text" id="tituloPagina" style="letter-spacing:0.08em;text-transform:uppercase;font-size:13px;">Mi Vivero</h1>
     <button class="theme-btn" onclick="toggleTema()" title="Cambiar tema">
       <svg id="iconoSol" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
@@ -271,6 +281,31 @@ tailwind.config = {
 <!-- NOTIFICATION -->
 <div id="mensajeExito" class="fixed top-16 left-4 right-4 z-50 hidden"></div>
 
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="fixed inset-0 flex items-center justify-center px-4" style="z-index:200;background:var(--bg);">
+  <div class="tarjeta w-full max-w-sm text-center fade-in" style="padding:28px 22px;">
+    <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"></path>
+        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
+      </svg>
+    </div>
+    <h2 class="neon-text font-bold text-xl mb-1">Mi Vivero</h2>
+    <p class="text-xs mb-5" style="color:var(--text-muted);">Iniciar sesion</p>
+    <div id="loginError" class="alerta alerta-rojo hidden" style="text-align:left;margin-bottom:12px;"></div>
+    <div class="mb-3 text-left">
+      <label class="etiqueta">EMAIL</label>
+      <input type="email" id="loginEmail" class="campo" placeholder="correo@ejemplo.com" autocomplete="email">
+    </div>
+    <div class="mb-5 text-left">
+      <label class="etiqueta">CONTRASENA</label>
+      <input type="password" id="loginPassword" class="campo" placeholder="Tu contrasena" autocomplete="current-password" onkeydown="if(event.key==='Enter')iniciarSesion()">
+    </div>
+    <button id="btnLogin" class="btn btn-verde" onclick="iniciarSesion()">Iniciar Sesion</button>
+  </div>
+</div>
+
+<div id="appContent" style="display:none;">
 <!-- ============================================================ -->
 <!-- SECCIÓN 1: VENTAS                                            -->
 <!-- ============================================================ -->
@@ -590,6 +625,7 @@ tailwind.config = {
     Plantas
   </button>
 </nav>
+</div><!-- /appContent -->
 
 <script>
 // ===== UTILIDADES =====
@@ -605,6 +641,80 @@ const formatFechaLarga = (iso) => { const [y,m,d] = iso.split('-'); return `${pa
 const SUPABASE_URL = 'https://kojhwhtvqfewsingyopl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_b9TSVtRrT3E52BAKPcywNA_F-LFpzBc';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ===== AUTH =====
+async function checkAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContent').style.display = '';
+    document.getElementById('btnLogout').style.display = '';
+    await init();
+  } else {
+    document.getElementById('loginScreen').style.display = '';
+    document.getElementById('appContent').style.display = 'none';
+    document.getElementById('btnLogout').style.display = 'none';
+  }
+}
+
+async function iniciarSesion() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  const errorEl = document.getElementById('loginError');
+  const btn = document.getElementById('btnLogin');
+
+  errorEl.classList.add('hidden');
+  if (!email || !pass) {
+    errorEl.innerHTML = 'Completa todos los campos';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="login-spinner"></div> Ingresando...';
+
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+
+  if (error) {
+    const msg = error.message === 'Invalid login credentials'
+      ? 'Correo o contrasena incorrectos'
+      : 'Error al iniciar sesion';
+    errorEl.innerHTML = msg;
+    errorEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.innerHTML = 'Iniciar Sesion';
+    return;
+  }
+
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appContent').style.display = '';
+  document.getElementById('btnLogout').style.display = '';
+  btn.disabled = false;
+  btn.innerHTML = 'Iniciar Sesion';
+  await init();
+}
+
+async function cerrarSesion() {
+  await sb.auth.signOut();
+  cache.vivero_productos = null;
+  cache.vivero_ventas = null;
+  cache.vivero_gastos = null;
+  if (typeof chartInstance !== 'undefined' && chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  document.getElementById('appContent').style.display = 'none';
+  document.getElementById('btnLogout').style.display = 'none';
+  document.getElementById('loginScreen').style.display = '';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').classList.add('hidden');
+}
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') {
+    document.getElementById('loginScreen').style.display = '';
+    document.getElementById('appContent').style.display = 'none';
+    document.getElementById('btnLogout').style.display = 'none';
+  }
+});
 
 const TABLE_MAP = {
   'vivero_productos': 'productos',
@@ -1184,7 +1294,6 @@ async function compartirResumen() {
 
 // ===== INIT =====
 async function init() {
-  initTema();
   await initProductos();
   await loadFromSupabase('vivero_ventas');
   await loadFromSupabase('vivero_gastos');
@@ -1192,7 +1301,10 @@ async function init() {
   document.getElementById('gastoFecha').value = hoy();
   renderVentasHoy();
 }
-init();
+
+// Boot
+initTema();
+checkAuth();
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
